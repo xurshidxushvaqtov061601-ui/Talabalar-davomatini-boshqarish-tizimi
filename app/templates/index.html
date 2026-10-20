@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Talabalar Davomatini Boshqarish Tizimi</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .status-badge-keldi { background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .status-badge-kechikdi { background-color: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+    .status-badge-sababli { background-color: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
+    .status-badge-sababsiz { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-brand-900 text-white shadow-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="showHome()">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow">
+          <i class="fa-solid fa-graduation-cap text-xl"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight">Davomat.OTM</h1>
+          <p class="text-xs text-blue-200">Talabalar davomatini boshqarish tizimi</p>
+        </div>
+      </div>
+
+      <!-- User Info & Logout (Hidden when not logged in) -->
+      <div id="userNavbar" class="hidden items-center space-x-4">
+        <div class="text-right">
+          <div id="navUserName" class="text-sm font-semibold text-white">FIO</div>
+          <div id="navUserRole" class="text-xs text-blue-300 capitalize">Rol</div>
+        </div>
+        <button onclick="logout()" class="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white text-xs font-medium rounded-lg transition flex items-center space-x-1">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span>Chiqish</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Notification Toast Container -->
+  <div id="toastContainer" class="fixed top-20 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+    <!-- 1. AUTH SCREEN (LOGIN) -->
+    <section id="authSection" class="max-w-md mx-auto mt-10">
+      <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+        <div class="text-center mb-6">
+          <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl shadow-inner">
+            <i class="fa-solid fa-user-lock"></i>
+          </div>
+          <h2 class="text-2xl font-bold text-slate-800">Tizimga Kirish</h2>
+          <p class="text-sm text-slate-500 mt-1">Davomat tizimidan foydalanish uchun tizimga kiring</p>
+        </div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Foydalanuvchi nomi (Login)</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                <i class="fa-regular fa-user"></i>
+              </span>
+              <input id="loginUsername" type="text" required placeholder="Masalan: admin yoki muallim1"
+                class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Parol</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                <i class="fa-solid fa-lock"></i>
+              </span>
+              <input id="loginPassword" type="password" required placeholder="••••••••"
+                class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+            </div>
+          </div>
+
+          <button type="submit" id="loginBtn"
+            class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-xl shadow-md shadow-blue-500/20 transition flex items-center justify-center space-x-2">
+            <span>Kirish</span>
+            <i class="fa-solid fa-arrow-right text-xs"></i>
+          </button>
+        </form>
+
+        <!-- Quick Demo Switcher -->
+        <div class="mt-8 pt-6 border-t border-slate-100">
+          <p class="text-xs font-semibold text-slate-400 text-center uppercase mb-3">Tezkor Sinov (Namunaviy hisoblar)</p>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <button onclick="fillLogin('admin', 'admin123')" class="p-2 border border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-lg text-blue-800 font-medium text-left">
+              <i class="fa-solid fa-shield-halved mr-1 text-blue-600"></i> Admin
+            </button>
+            <button onclick="fillLogin('muallim1', 'teacher123')" class="p-2 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 rounded-lg text-emerald-800 font-medium text-left">
+              <i class="fa-solid fa-chalkboard-user mr-1 text-emerald-600"></i> O'qituvchi
+            </button>
+            <button onclick="fillLogin('talaba1', 'student123')" class="p-2 border border-purple-200 bg-purple-50 hover:bg-purple-100 rounded-lg text-purple-800 font-medium text-left">
+              <i class="fa-solid fa-user-graduate mr-1 text-purple-600"></i> Talaba (Faol)
+            </button>
+            <button onclick="fillLogin('talaba5', 'student123')" class="p-2 border border-rose-200 bg-rose-50 hover:bg-rose-100 rounded-lg text-rose-800 font-medium text-left">
+              <i class="fa-solid fa-triangle-exclamation mr-1 text-rose-600"></i> Talaba (&gt;20% Xavf)
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. ADMIN DASHBOARD -->
+    <section id="adminSection" class="hidden space-y-6">
+      <!-- Admin Top Metrics -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+          <div>
+            <div class="text-xs text-slate-500 font-medium">Jami Talabalar</div>
+            <div id="statTotalStudents" class="text-2xl font-bold text-slate-800 mt-1">0</div>
+          </div>
+          <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl">
+            <i class="fa-solid fa-user-graduate"></i>
+          </div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+          <div>
+            <div class="text-xs text-slate-500 font-medium">O'qituvchilar</div>
+            <div id="statTotalTeachers" class="text-2xl font-bold text-slate-800 mt-1">0</div>
+          </div>
+          <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl">
+            <i class="fa-solid fa-chalkboard-user"></i>
+          </div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+          <div>
+            <div class="text-xs text-slate-500 font-medium">O'rtacha Davomat</div>
+            <div id="statAttendanceRate" class="text-2xl font-bold text-blue-600 mt-1">0%</div>
+          </div>
+          <div class="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center text-xl">
+            <i class="fa-solid fa-chart-pie"></i>
+          </div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+          <div>
+            <div class="text-xs text-slate-500 font-medium">Xavf ostida (&gt;20%)</div>
+            <div id="statAtRisk" class="text-2xl font-bold text-rose-600 mt-1">0</div>
+          </div>
+          <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center text-xl">
+            <i class="fa-solid fa-bell"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 flex flex-wrap gap-2 text-sm">
+        <button onclick="switchAdminTab('overview')" id="tabBtn-overview" class="admin-tab-btn px-4 py-2 rounded-xl font-medium bg-blue-600 text-white">
+          <i class="fa-solid fa-chart-line mr-1.5"></i> Statistika
+        </button>
+        <button onclick="switchAdminTab('users')" id="tabBtn-users" class="admin-tab-btn px-4 py-2 rounded-xl font-medium text-slate-600 hover:bg-slate-100">
+          <i class="fa-solid fa-users mr-1.5"></i> Foydalanuvchilar
+        </button>
+        <button onclick="switchAdminTab('faculties')" id="tabBtn-faculties" class="admin-tab-btn px-4 py-2 rounded-xl font-medium text-slate-600 hover:bg-slate-100">
+          <i class="fa-solid fa-building-columns mr-1.5"></i> Fakultet & Guruhlar
+        </button>
+        <button onclick="switchAdminTab('subjects')" id="tabBtn-subjects" class="admin-tab-btn px-4 py-2 rounded-xl font-medium text-slate-600 hover:bg-slate-100">
+          <i class="fa-solid fa-book-bookmark mr-1.5"></i> Fanlar & Jadval
+        </button>
+        <button onclick="switchAdminTab('leaves')" id="tabBtn-leaves" class="admin-tab-btn px-4 py-2 rounded-xl font-medium text-slate-600 hover:bg-slate-100">
+          <i class="fa-solid fa-file-medical mr-1.5"></i> Spravkalar
+        </button>
+        <button onclick="switchAdminTab('excel')" id="tabBtn-excel" class="admin-tab-btn px-4 py-2 rounded-xl font-medium text-slate-600 hover:bg-slate-100">
+          <i class="fa-solid fa-file-excel mr-1.5 text-emerald-600"></i> Excel Import / Export
+        </button>
+        <button onclick="switchAdminTab('audit')" id="tabBtn-audit" class="admin-tab-btn px-4 py-2 rounded-xl font-medium text-slate-600 hover:bg-slate-100">
+          <i class="fa-solid fa-clock-rotate-left mr-1.5"></i> Audit Loglar
+        </button>
+      </div>
+
+      <!-- Tab 1: Overview & Charts -->
+      <div id="adminTab-overview" class="admin-tab-content space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h3 class="font-bold text-slate-800 mb-4 flex items-center">
+              <i class="fa-solid fa-chart-pie text-blue-600 mr-2"></i> Davomat taqsimoti
+            </h3>
+            <div class="h-64 flex items-center justify-center">
+              <canvas id="attendancePieChart"></canvas>
+            </div>
+          </div>
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h3 class="font-bold text-slate-800 mb-4 flex items-center">
+              <i class="fa-solid fa-triangle-exclamation text-rose-600 mr-2"></i> Xavf ostidagi talabalar (&gt;20% qoldirganlar)
+            </h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 text-slate-500 uppercase">
+                  <tr>
+                    <th class="p-2">Talaba</th>
+                    <th class="p-2">Guruh</th>
+                    <th class="p-2">Qoldirgan</th>
+                    <th class="p-2">Foiz</th>
+                  </tr>
+                </thead>
+                <tbody id="atRiskTableBody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Groups Summary Table -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-slate-800">Guruhlar kesimida davomat hisoboti</h3>
+            <button onclick="downloadExcelReport()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium flex items-center space-x-1 shadow">
+              <i class="fa-solid fa-file-excel"></i>
+              <span>Excel yuklab olish</span>
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 text-slate-600 uppercase border-y border-slate-200">
+                <tr>
+                  <th class="p-3">Guruh nomi</th>
+                  <th class="p-3">Fakultet</th>
+                  <th class="p-3">Talabalar</th>
+                  <th class="p-3">Jami yozuv</th>
+                  <th class="p-3">Keldi</th>
+                  <th class="p-3">Kechikdi</th>
+                  <th class="p-3">Qoldirgan</th>
+                  <th class="p-3">Davomat %</th>
+                </tr>
+              </thead>
+              <tbody id="groupSummaryTableBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Users Management -->
+      <div id="adminTab-users" class="admin-tab-content hidden space-y-4">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div>
+              <h3 class="font-bold text-slate-800 text-lg">Foydalanuvchilarni boshqarish</h3>
+              <p class="text-xs text-slate-500">Administratorlar, O'qituvchilar va Talabalar ro'yxati</p>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="openAddUserModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow">
+                <i class="fa-solid fa-user-plus"></i>
+                <span>Yangi foydalanuvchi</span>
+              </button>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 text-slate-600 uppercase border-y border-slate-200">
+                <tr>
+                  <th class="p-3">FIO</th>
+                  <th class="p-3">Login</th>
+                  <th class="p-3">Rol</th>
+                  <th class="p-3">Qo'shimcha ma'lumot</th>
+                  <th class="p-3">Holat</th>
+                  <th class="p-3 text-right">Amallar</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Faculties & Groups -->
+      <div id="adminTab-faculties" class="admin-tab-content hidden space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Faculties -->
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-bold text-slate-800">Fakultetlar</h3>
+              <button onclick="openAddFacultyModal()" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium">
+                + Yangi fakultet
+              </button>
+            </div>
+            <div id="facultiesList" class="space-y-2"></div>
+          </div>
+          <!-- Groups -->
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-bold text-slate-800">Akademik Guruhlar</h3>
+              <button onclick="openAddGroupModal()" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium">
+                + Yangi guruh
+              </button>
+            </div>
+            <div id="groupsList" class="space-y-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 4: Subjects & Schedules -->
+      <div id="adminTab-subjects" class="admin-tab-content hidden space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Subjects -->
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-bold text-slate-800">Fanlar Katalogi</h3>
+              <button onclick="openAddSubjectModal()" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium">
+                + Yangi fan
+              </button>
+            </div>
+            <div id="subjectsList" class="space-y-2"></div>
+          </div>
+          <!-- Schedules -->
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-bold text-slate-800">Dars Jadvallari</h3>
+              <button onclick="openAddScheduleModal()" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium">
+                + Dars jadvali biriktirish
+              </button>
+            </div>
+            <div id="schedulesList" class="space-y-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 5: Leave Requests -->
+      <div id="adminTab-leaves" class="admin-tab-content hidden space-y-4">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h3 class="font-bold text-slate-800 text-lg mb-4">Talabalar topshirgan tibbiy ma'lumotnomalar (Spravkalar)</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 text-slate-600 uppercase border-y border-slate-200">
+                <tr>
+                  <th class="p-3">Talaba</th>
+                  <th class="p-3">Guruh</th>
+                  <th class="p-3">Muddat</th>
+                  <th class="p-3">Sabab</th>
+                  <th class="p-3">Hujjat</th>
+                  <th class="p-3">Holat</th>
+                  <th class="p-3 text-right">Amal</th>
+                </tr>
+              </thead>
+              <tbody id="leavesTableBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 6: Excel Import/Export -->
+      <div id="adminTab-excel" class="admin-tab-content hidden space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center text-xl mb-4">
+              <i class="fa-solid fa-file-import"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 text-lg mb-1">Excel orqali ommaviy yuklash (Import)</h3>
+            <p class="text-xs text-slate-500 mb-4">
+              Talabalar yoki o'qituvchilar ro'yxatini Excel (.xlsx) fayli orqali bir necha sekundda tizimga kiritishingiz mumkin.
+            </p>
+            <form onsubmit="handleExcelImport(event)" class="space-y-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Yuklanadigan rol:</label>
+                <select id="importRole" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs">
+                  <option value="student">Talabalar ro'yxati</option>
+                  <option value="teacher">O'qituvchilar ro'yxati</option>
+                </select>
+              </div>
+              <div id="importGroupSelectWrapper">
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Biriktiriladigan guruh:</label>
+                <select id="importGroupSelect" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs"></select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Excel faylni tanlang (.xlsx):</label>
+                <input type="file" id="importExcelFile" accept=".xlsx" required class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+              </div>
+              <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl text-xs shadow flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <span>Faylni yuklash va bazaga kiritish</span>
+              </button>
+            </form>
+          </div>
+
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-xl mb-4">
+              <i class="fa-solid fa-file-excel"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 text-lg mb-1">Davomat hisobotini yuklab olish (Export)</h3>
+            <p class="text-xs text-slate-500 mb-4">
+              Barcha talabalar yoki aniq guruh bo'yicha to'liq hisoblangan davomat statistikasi (Keldi, Kechikdi, Sababli, Sababsiz, Foiz) bilan professional Excel faylini yuklab oling.
+            </p>
+            <div class="space-y-4">
+              <button onclick="downloadExcelReport()" class="w-full py-3 bg-brand-700 hover:bg-brand-800 text-white font-medium rounded-xl text-xs shadow flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-download"></i>
+                <span>Barcha talabalar hisobotini yuklab olish (.xlsx)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 7: Audit Logs -->
+      <div id="adminTab-audit" class="admin-tab-content hidden space-y-4">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h3 class="font-bold text-slate-800 text-lg mb-4">Xavfsizlik va Harakatlar Auditi (Audit Logs)</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 text-slate-600 uppercase border-y border-slate-200">
+                <tr>
+                  <th class="p-3">Vaqt</th>
+                  <th class="p-3">Foydalanuvchi</th>
+                  <th class="p-3">Harakat</th>
+                  <th class="p-3">Tafsilotlar</th>
+                </tr>
+              </thead>
+              <tbody id="auditTableBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. TEACHER DASHBOARD -->
+    <section id="teacherSection" class="hidden space-y-6">
+      <div class="bg-gradient-to-r from-brand-900 to-brand-700 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <div class="text-xs font-semibold uppercase tracking-wider text-blue-200">O'qituvchi Kabineti</div>
+          <h2 id="teacherNameHeading" class="text-2xl font-bold mt-1">O'qituvchi FIO</h2>
+          <p id="teacherDeptHeading" class="text-xs text-blue-100 mt-1">Kafedra va Unvon</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <span class="px-3 py-1 bg-white/10 rounded-full text-xs backdrop-blur-sm">
+            <i class="fa-regular fa-calendar-check mr-1"></i> Elektron Jurnal Faol
+          </span>
+        </div>
+      </div>
+
+      <!-- Classes & Interactive Journal -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left: My Schedules -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h3 class="font-bold text-slate-800 mb-3 flex items-center">
+            <i class="fa-solid fa-calendar-days text-blue-600 mr-2"></i> Biriktirilgan Darslar
+          </h3>
+          <div id="teacherSchedulesList" class="space-y-2"></div>
+        </div>
+
+        <!-- Right: Interactive Journal -->
+        <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100 mb-4">
+            <div>
+              <h3 id="journalTitle" class="font-bold text-slate-800 text-lg">Elektron Jurnal</h3>
+              <p id="journalSubtitle" class="text-xs text-slate-500">Darsni tanlang</p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <input type="date" id="journalDateInput" onchange="loadJournalData()" class="text-xs p-2 border border-slate-300 rounded-lg">
+              <button onclick="markAllPresent()" class="px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-semibold transition">
+                <i class="fa-solid fa-check-double mr-1"></i> Barchasi keldi
+              </button>
+            </div>
+          </div>
+
+          <!-- Lesson Topic Input -->
+          <div class="mb-4">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Bugungi dars mavzusi:</label>
+            <input type="text" id="journalTopicInput" placeholder="Masalan: Ma'lumotlar bazasi normalizatsiyasi"
+              class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+
+          <!-- Students Attendance Table -->
+          <div class="flex-1 overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 text-slate-600 uppercase border-y border-slate-200">
+                <tr>
+                  <th class="p-2.5">Talaba FIO</th>
+                  <th class="p-2.5">ID Raqami</th>
+                  <th class="p-2.5 text-center">Davomat Holati</th>
+                  <th class="p-2.5">Izoh</th>
+                </tr>
+              </thead>
+              <tbody id="journalStudentsBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+
+          <!-- Save Button -->
+          <div class="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+            <button onclick="saveAttendanceJournal()" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs shadow flex items-center space-x-2">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span>Davomatni Saqlash</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. STUDENT DASHBOARD -->
+    <section id="studentSection" class="hidden space-y-6">
+      <!-- Warning Banner if > 20% Absent -->
+      <div id="studentWarningBanner" class="hidden bg-rose-50 border border-rose-300 text-rose-800 p-4 rounded-2xl flex items-start space-x-3 shadow-sm">
+        <div class="text-rose-600 text-2xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div>
+          <div class="font-bold text-sm">DIQQAT! Dars qoldirish bo'yicha ogohlantirish!</div>
+          <div class="text-xs text-rose-700 mt-0.5">
+            Siz belgilangan dars mashg'ulotlarining 20% dan ortig'ini qoldirgansiz. Iltimos, sababli qoldirgan bo'lsangiz, pastdagi bo'lim orqali tibbiy ma'lumotnoma yuklang yoki dekanatga uchrashing!
+          </div>
+        </div>
+      </div>
+
+      <!-- Student Info & Rate Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-4">
+          <div class="w-14 h-14 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center text-2xl font-bold">
+            <i class="fa-solid fa-user-graduate"></i>
+          </div>
+          <div>
+            <div id="studentCardName" class="font-bold text-slate-800 text-sm">FIO</div>
+            <div id="studentCardGroup" class="text-xs text-slate-500">Guruh</div>
+            <div id="studentCardIdNum" class="text-xs text-blue-600 font-mono mt-0.5">ID</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+          <div>
+            <div class="text-xs text-slate-500 font-medium">Umumiy Davomat %</div>
+            <div id="studentCardPercentage" class="text-3xl font-extrabold text-blue-600 mt-1">0%</div>
+          </div>
+          <div class="text-xs space-y-1">
+            <span class="inline-block px-2 py-0.5 rounded status-badge-keldi" id="studentCountKeldi">Keldi: 0</span>
+            <span class="inline-block px-2 py-0.5 rounded status-badge-kechikdi" id="studentCountKechikdi">Kechikdi: 0</span>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+          <div>
+            <div class="text-xs text-slate-500 font-medium">Qoldirilgan Darslar</div>
+            <div id="studentCardAbsentPct" class="text-3xl font-extrabold text-rose-600 mt-1">0%</div>
+          </div>
+          <div class="text-xs space-y-1">
+            <span class="inline-block px-2 py-0.5 rounded status-badge-sababli" id="studentCountSababli">Sababli: 0</span>
+            <span class="inline-block px-2 py-0.5 rounded status-badge-sababsiz" id="studentCountSababsiz">Sababsiz: 0</span>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+          <div>
+            <div class="text-xs text-slate-500 font-medium">Jami Dars Mashg'ulotlari</div>
+            <div id="studentCardTotalClasses" class="text-3xl font-extrabold text-slate-800 mt-1">0</div>
+          </div>
+          <div class="w-12 h-12 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center text-xl">
+            <i class="fa-solid fa-chalkboard"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subject breakdown & Leave Request -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Subjects attendance -->
+        <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h3 class="font-bold text-slate-800 text-lg mb-4 flex items-center">
+            <i class="fa-solid fa-book-open text-blue-600 mr-2"></i> Fanlar kesimida davomat
+          </h3>
+          <div id="studentSubjectsList" class="space-y-3"></div>
+
+          <!-- History table -->
+          <h3 class="font-bold text-slate-800 text-md mt-6 mb-3">Darslar tarixi</h3>
+          <div class="overflow-x-auto max-h-64 overflow-y-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 text-slate-600 uppercase sticky top-0">
+                <tr>
+                  <th class="p-2.5">Sana</th>
+                  <th class="p-2.5">Fan</th>
+                  <th class="p-2.5">Mavzu</th>
+                  <th class="p-2.5">O'qituvchi</th>
+                  <th class="p-2.5">Holat</th>
+                </tr>
+              </thead>
+              <tbody id="studentHistoryBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Submit Leave Request -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <h3 class="font-bold text-slate-800 text-lg flex items-center">
+            <i class="fa-solid fa-file-medical text-emerald-600 mr-2"></i> Spravka topshirish
+          </h3>
+          <p class="text-xs text-slate-500">
+            Dars qoldirgan kunlaringiz uchun elektron tibbiy ma'lumotnoma yuklang
+          </p>
+
+          <form onsubmit="handleStudentLeaveSubmit(event)" class="space-y-3">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Boshlanishi:</label>
+                <input type="date" id="leaveStartDate" required class="w-full text-xs p-2 border border-slate-300 rounded-lg">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Tugashi:</label>
+                <input type="date" id="leaveEndDate" required class="w-full text-xs p-2 border border-slate-300 rounded-lg">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Sabab tavsifi:</label>
+              <textarea id="leaveReason" rows="2" required placeholder="Masalan: Shamollash va statsionar davolanish" class="w-full text-xs p-2 border border-slate-300 rounded-lg"></textarea>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Hujjat nusxasi (PDF / Rasm):</label>
+              <input type="file" id="leaveFile" accept=".pdf,image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700">
+            </div>
+
+            <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl text-xs shadow flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-paper-plane"></i>
+              <span>Arizani yuborish</span>
+            </button>
+          </form>
+
+          <!-- Past requests list -->
+          <div class="pt-4 border-t border-slate-100">
+            <div class="text-xs font-bold text-slate-700 mb-2">Yuborilgan arizalarim:</div>
+            <div id="studentLeavesList" class="space-y-2 max-h-40 overflow-y-auto"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modals for Admin Actions -->
+  <div id="modalOverlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="modalContainer" class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200"></div>
+  </div>
+
+  <!-- JavaScript Application Logic -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
